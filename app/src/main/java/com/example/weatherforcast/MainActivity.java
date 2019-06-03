@@ -1,28 +1,53 @@
 package com.example.weatherforcast;
 
+import android.Manifest;
+import android.app.AlertDialog;
+import android.app.Dialog;
+import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.pm.PackageManager;
+import android.location.Address;
+import android.location.Geocoder;
+import android.location.Location;
+import android.location.LocationManager;
 import android.os.Bundle;
+import android.provider.Settings;
+import android.support.annotation.NonNull;
+import android.support.annotation.Nullable;
+import android.support.v4.app.ActivityCompat;
+import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
-import android.view.Menu;
-import android.view.MenuItem;
 import android.view.View;
-import android.widget.Button;
-import android.widget.EditText;
+import android.widget.ImageView;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import com.example.weatherforcast.adapter.NoteAdapter;
 import com.example.weatherforcast.model.Note;
 import com.example.weatherforcast.model.Temp;
 import com.example.weatherforcast.model.Weather;
 import com.example.weatherforcast.model.main;
+import com.google.android.gms.common.ConnectionResult;
+import com.google.android.gms.common.GoogleApiAvailability;
+import com.google.android.gms.common.api.GoogleApiClient;
+import com.google.android.gms.location.LocationListener;
+import com.google.android.gms.location.LocationRequest;
+import com.google.android.gms.location.LocationServices;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
 
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Calendar;
+import java.util.Date;
+import java.util.List;
+import java.util.Locale;
 
+import butterknife.BindView;
+import butterknife.ButterKnife;
 import okhttp3.ResponseBody;
 import retrofit2.Call;
 import retrofit2.Callback;
@@ -30,22 +55,41 @@ import retrofit2.Response;
 
 import static com.example.weatherforcast.API.RetrofitClient.getAPIService;
 
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends AppCompatActivity implements GoogleApiClient.ConnectionCallbacks, GoogleApiClient.OnConnectionFailedListener, LocationListener {
     RecyclerView recyclerView;
     NoteAdapter mAdapter;
+    @BindView(R.id.img)
+    ImageView img;
+    @BindView(R.id.tv_date)
+    TextView tvDate;
+    @BindView(R.id.tv_temp)
+    TextView tvTemp;
+    @BindView(R.id.tv_city)
+    TextView tvCity;
+    @BindView(R.id.img_sun)
+    ImageView imgSun;
     private ArrayList<main> notesList = new ArrayList<>();
 
 
-    Button btn_go;
-    EditText et_citname;
+    //    Button btn_go;
+//    EditText et_citname;
     TextView tvNote;
 
+    LocationManager locationManager;
+    double mLatitude = 28.6018425;
+    double mLongitude = 77.352016;
+    private GoogleApiClient mGoogleApiClient;
+    LocationRequest mLocationRequest;
+
     Note note = new Note();
+    private String[] permissions = {Manifest.permission.ACCESS_COARSE_LOCATION, Manifest.permission.ACCESS_FINE_LOCATION};
+    private static final int REQUEST_RECORD_AUDIO_PERMISSION = 200;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        ButterKnife.bind(this);
         recyclerView = findViewById(R.id.rv);
 
         recyclerView.setLayoutManager(new LinearLayoutManager(this));
@@ -55,22 +99,59 @@ public class MainActivity extends AppCompatActivity {
         getNotes();
 
 
-        btn_go = findViewById(R.id.btn_go);
-        et_citname = findViewById(R.id.et_cityname);
+//        btn_go = findViewById(R.id.btn_go);
+//        et_citname = findViewById(R.id.et_cityname);
         tvNote = findViewById(R.id.tv_note);
 
 
-        btn_go.setOnClickListener(new View.OnClickListener() {
+       /* btn_go.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
 
-               /* CityAdapter mAdapter = new CityAdapter(MainActivity.this, note);
-                recyclerView.setAdapter(mAdapter);*/
-                getCityWiseData();
+               *//* CityAdapter mAdapter = new CityAdapter(MainActivity.this, note);
+                recyclerView.setAdapter(mAdapter);*//*
+
 
             }
-        });
+        });*/
+
+        mGoogleApiClient = new GoogleApiClient.Builder(this)
+                .addConnectionCallbacks(this)
+                .addOnConnectionFailedListener(this)
+                .addApi(LocationServices.API)
+                .build();
+        checkForPlayServices();
+        locationManager = (LocationManager) getSystemService(LOCATION_SERVICE);
+        if (!locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER))
+            showGPSDisabledAlertToUser();
+        createLocationRequest();
+        mGoogleApiClient.connect();
+
+
     }
+
+    private void showGPSDisabledAlertToUser() {
+        AlertDialog.Builder alertDialogBuilder = new AlertDialog.Builder(this, R.style.Theme_AppCompat_DayNight_Dialog);
+        alertDialogBuilder.setMessage("GPS is disabled in your device. Would you like to enable it for accurate data?")
+                .setCancelable(false)
+                .setPositiveButton("Enable GPS",
+                        new DialogInterface.OnClickListener() {
+                            public void onClick(DialogInterface dialog, int id) {
+                                Intent callGPSSettingIntent = new Intent(
+                                        Settings.ACTION_LOCATION_SOURCE_SETTINGS);
+                                startActivity(callGPSSettingIntent);
+                            }
+                        });
+        alertDialogBuilder.setNegativeButton("Cancel",
+                new DialogInterface.OnClickListener() {
+                    public void onClick(DialogInterface dialog, int id) {
+                        dialog.cancel();
+                    }
+                });
+        AlertDialog alert = alertDialogBuilder.create();
+        alert.show();
+    }
+
     public void getNotes() {
         Call<ResponseBody> call = getAPIService().getData();
 
@@ -134,8 +215,9 @@ public class MainActivity extends AppCompatActivity {
 
 
     }
-    public void getCityWiseData() {
-        Call<ResponseBody> call = getAPIService().getCitywiseData("" + et_citname.getText().toString());
+
+    public void getCityWiseData(String city) {
+        Call<ResponseBody> call = getAPIService().getCitywiseData("" + city);
 
         call.enqueue(new Callback<ResponseBody>() {
             @Override
@@ -151,14 +233,20 @@ public class MainActivity extends AppCompatActivity {
                     } else {
                         rain_data = "";
                     }
-                    tvNote.setText(
-                            "city : " + json.getString("name") +
+                    tvNote.setText("  " + json.getJSONArray("weather").
+                            getJSONObject(0).getString("description")
+                    );
+                    tvDate.setText("Today  " + getDate());
+                    tvTemp.setText(convertFahrenheitToCelcius(Float.parseFloat(
+                            json.getJSONObject("main").getString("temp"))) + ""+ + (char) 0x00B0);
+                   /* tvNote.setText(
+                            *//* "city : " + json.getString("name") +*//*
 
-                                    "\n\nWeather : " + json.getJSONArray("weather").getJSONObject(0).getString("description") +
+                            "\n\nWeather : " + json.getJSONArray("weather").getJSONObject(0).getString("description") +
 
                                     "\nbase :" + json.getString("base") +
 
-                                    "\nTemp : " + json.getJSONObject("main").getString("temp") +
+                                    *//*   "\nTemp : " + json.getJSONObject("main").getString("temp") +*//*
 
                                     "\nPressure : " + json.getJSONObject("main").getString("pressure") +
                                     "\nhumidity : " + json.getJSONObject("main").getString("humidity") +
@@ -170,7 +258,7 @@ public class MainActivity extends AppCompatActivity {
                                     rain_data
 
 
-                    );
+                    );*/
                     tvNote.setVisibility(View.VISIBLE);
 
                 } catch (Exception e) {
@@ -187,25 +275,122 @@ public class MainActivity extends AppCompatActivity {
 
     }
 
-    @Override
-    public boolean onCreateOptionsMenu(Menu menu) {
-        // Inflate the menu; this adds items to the action bar if it is present.
-        getMenuInflater().inflate(R.menu.main, menu);
-        return true;
+    private String getDate() {
+        Date c = Calendar.getInstance().getTime();
+        System.out.println("Current time => " + c);
+
+        SimpleDateFormat df = new SimpleDateFormat("dd-MMM");
+        String formattedDate = df.format(c);
+        return formattedDate;
     }
 
-    @Override
-    public boolean onOptionsItemSelected(MenuItem item) {
-        // Handle action bar item clicks here. The action bar will
-        // automatically handle clicks on the Home/Up button, so long
-        // as you specify a parent activity in AndroidManifest.xml.
-        int id = item.getItemId();
-        if (id == R.id.refresh_icon) {
-            Intent intent = new Intent(MainActivity.this, DaysActivity.class);
-            startActivity(intent);
+    private float convertFahrenheitToCelcius(float fahrenheit) {
+        return fahrenheit - 273.15f;
+    }
+
+    protected void createLocationRequest() {
+        mLocationRequest = new LocationRequest();
+        mLocationRequest.setInterval(60000 * 5);
+        mLocationRequest.setFastestInterval(60000);
+        mLocationRequest.setPriority(LocationRequest.PRIORITY_BALANCED_POWER_ACCURACY);
+    }
+
+    private void checkForPlayServices() {
+        int status = GoogleApiAvailability.getInstance().isGooglePlayServicesAvailable(getBaseContext());
+        if (status != ConnectionResult.SUCCESS) {
+            int requestCode = 10;
+            Dialog dialog = GoogleApiAvailability.getInstance().getErrorDialog(this, status, requestCode);
+            dialog.show();
         }
-        return super.onOptionsItemSelected(item);
     }
 
+    private void getLocation() {
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            return;
+        }
+        Location mLastLocation = LocationServices.FusedLocationApi.getLastLocation(
+                mGoogleApiClient);
+        if (mLastLocation != null) {
+            mLatitude = mLastLocation.getLatitude();
+            mLongitude = mLastLocation.getLongitude();
+            Geocoder geocoder = new Geocoder(this, Locale.getDefault());
+            List<Address> addresses = null;
+            try {
+                //----------------------------------------------------------
+                addresses = geocoder.getFromLocation(mLatitude, mLongitude, 1);
+                int maxAddressLine = addresses.get(0).getMaxAddressLineIndex();
+//            String countryName = addresses.get(0).getAddressLine(maxAddressLine);
+                String cityName = addresses.get(0).getLocality();
+                String stateName = addresses.get(0).getAdminArea();
+                String countryName = addresses.get(0).getCountryName();
+                tvCity.setText(cityName);
+                if (GlobalElements.isConnectingToInternet(this)) {
+                    getCityWiseData(cityName);
+                } else {
+                    GlobalElements.showDialog(this);
+                }
+            } catch (Exception e) {
 
+            }
+//            getDoctors(mLastLocation);
+        }
+        startLocationUpdates();
+    }
+
+    protected void startLocationUpdates() {
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            return;
+        }
+        LocationServices.FusedLocationApi.requestLocationUpdates(mGoogleApiClient, mLocationRequest, this);
+    }
+
+    @Override
+    public void onConnected(@Nullable Bundle bundle) {
+        if (!checkPremissions()) {
+            ActivityCompat.requestPermissions(this, permissions, REQUEST_RECORD_AUDIO_PERMISSION);
+        } else {
+            getLocation();
+        }
+    }
+
+    private boolean checkPremissions() {
+        if ((ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) || (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED)) {
+            return false;
+        } else return true;
+    }
+
+    private boolean permissionToRecordAccepted = false;
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        switch (requestCode) {
+            case REQUEST_RECORD_AUDIO_PERMISSION:
+                try {
+                    permissionToRecordAccepted = grantResults[0] == PackageManager.PERMISSION_GRANTED;
+                    if (permissionToRecordAccepted)
+                        getLocation();
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+                break;
+        }
+        if (!permissionToRecordAccepted)
+            Toast.makeText(this, "Permission not granted", Toast.LENGTH_SHORT).show();
+    }
+
+    @Override
+    public void onConnectionSuspended(int i) {
+
+    }
+
+    @Override
+    public void onConnectionFailed(@NonNull ConnectionResult connectionResult) {
+
+    }
+
+    @Override
+    public void onLocationChanged(Location location) {
+
+    }
 }
