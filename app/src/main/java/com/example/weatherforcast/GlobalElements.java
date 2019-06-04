@@ -4,10 +4,47 @@ import android.app.AlertDialog;
 import android.app.Application;
 import android.content.Context;
 import android.content.DialogInterface;
+import android.graphics.Typeface;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 
 public class GlobalElements extends Application {
+    private Typeface AugustSansRegular, AugustSansMedium, AugustSansBold, weather;
+    private static GlobalElements mInstance;
+
+
+    @Override
+    public void onCreate() {
+        super.onCreate();
+
+        getInstance();
+        mInstance = this;
+        AugustSansRegular = Typeface.createFromAsset(getApplicationContext().getAssets(), "AugustSans-55Regular.ttf");
+        AugustSansMedium = Typeface.createFromAsset(getApplicationContext().getAssets(), "AugustSans-65Medium.ttf");
+        AugustSansBold = Typeface.createFromAsset(getApplicationContext().getAssets(), "AugustSans-75Bold.ttf");
+        weather = Typeface.createFromAsset(getApplicationContext().getAssets(), "weather.ttf");
+    }
+
+    public static synchronized GlobalElements getInstance() {
+        return mInstance;
+    }
+
+    public Typeface getAugustSansRegular() {
+        return AugustSansRegular;
+    }
+
+    public Typeface getWeather() {
+        return weather;
+    }
+
+    public Typeface getAugustSansBold() {
+        return AugustSansBold;
+    }
+
+    public Typeface getAugustSansMedium() {
+        return AugustSansMedium;
+    }
+
     public static boolean isConnectingToInternet(Context context) {
         ConnectivityManager connectivity = (ConnectivityManager) context
                 .getSystemService(Context.CONNECTIVITY_SERVICE);

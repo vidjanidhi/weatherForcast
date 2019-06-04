@@ -39,9 +39,7 @@ import com.google.android.gms.location.LocationServices;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
@@ -58,8 +56,7 @@ import static com.example.weatherforcast.API.RetrofitClient.getAPIService;
 public class MainActivity extends AppCompatActivity implements GoogleApiClient.ConnectionCallbacks, GoogleApiClient.OnConnectionFailedListener, LocationListener {
     RecyclerView recyclerView;
     NoteAdapter mAdapter;
-    @BindView(R.id.img)
-    ImageView img;
+
     @BindView(R.id.tv_date)
     TextView tvDate;
     @BindView(R.id.tv_temp)
@@ -68,6 +65,8 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
     TextView tvCity;
     @BindView(R.id.img_sun)
     ImageView imgSun;
+    @BindView(R.id.tv_icon)
+    TextView tvIcon;
     private ArrayList<main> notesList = new ArrayList<>();
 
 
@@ -90,6 +89,12 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         ButterKnife.bind(this);
+        tvNote = findViewById(R.id.tv_note);
+        tvDate.setTypeface(GlobalElements.getInstance().getAugustSansBold());
+        tvTemp.setTypeface(GlobalElements.getInstance().getAugustSansRegular());
+        tvCity.setTypeface(GlobalElements.getInstance().getAugustSansRegular());
+        tvNote.setTypeface(GlobalElements.getInstance().getAugustSansMedium());
+
         recyclerView = findViewById(R.id.rv);
 
         recyclerView.setLayoutManager(new LinearLayoutManager(this));
@@ -101,7 +106,7 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
 
 //        btn_go = findViewById(R.id.btn_go);
 //        et_citname = findViewById(R.id.et_cityname);
-        tvNote = findViewById(R.id.tv_note);
+//
 
 
        /* btn_go.setOnClickListener(new View.OnClickListener() {
@@ -233,14 +238,20 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
                     } else {
                         rain_data = "";
                     }
-                    tvNote.setText("  " + json.getJSONArray("weather").
+                    tvNote.setText("" + json.getJSONArray("weather").
                             getJSONObject(0).getString("description")
                     );
-                    tvDate.setText("Today  " + getDate());
-                    tvTemp.setText(convertFahrenheitToCelcius(Float.parseFloat(
-                            json.getJSONObject("main").getString("temp"))) + ""+ + (char) 0x00B0);
-                   /* tvNote.setText(
-                            *//* "city : " + json.getString("name") +*//*
+                    tvCity.setText(json.getString("name") + "," + json.getJSONObject("sys").getString("country"));
+                    tvDate.setText("Today  " + support.getTodayDate());
+
+                    tvTemp.setText(String.format("%.2f", support.convertFahrenheitToCelcius(Float.parseFloat(
+                            json.getJSONObject("main").getString("temp")))) + "" + " ℃");
+
+                    setWeatherIcon(json.getJSONArray("weather").getJSONObject(0).getInt("id"),
+                            json.getJSONObject("sys").getLong("sunrise") * 1000,
+                            json.getJSONObject("sys").getLong("sunset") * 1000);
+                    /* tvNote.setText(
+                     *//* "city : " + json.getString("name") +*//*
 
                             "\n\nWeather : " + json.getJSONArray("weather").getJSONObject(0).getString("description") +
 
@@ -275,18 +286,43 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
 
     }
 
-    private String getDate() {
-        Date c = Calendar.getInstance().getTime();
-        System.out.println("Current time => " + c);
-
-        SimpleDateFormat df = new SimpleDateFormat("dd-MMM");
-        String formattedDate = df.format(c);
-        return formattedDate;
+    private void setWeatherIcon(int actualId, long sunrise, long sunset) {
+        int id = actualId / 100;
+        String icon = "";
+        if (actualId == 800) {
+            long currentTime = new Date().getTime();
+            if (currentTime >= sunrise && currentTime < sunset) {
+                icon = this.getString(R.string.weather_sunny);
+            } else {
+                icon = this.getString(R.string.weather_clear_night);
+            }
+        } else {
+            switch (id) {
+                case 2:
+                    icon = this.getString(R.string.weather_thunder);
+                    break;
+                case 3:
+                    icon = this.getString(R.string.weather_drizzle);
+                    break;
+                case 7:
+                    icon = this.getString(R.string.weather_foggy);
+                    break;
+                case 8:
+                    icon = this.getString(R.string.weather_cloudy);
+                    break;
+                case 6:
+                    icon = this.getString(R.string.weather_snowy);
+                    break;
+                case 5:
+                    icon = this.getString(R.string.weather_rainy);
+                    break;
+            }
+        }
+        tvIcon.setTypeface(GlobalElements.getInstance().getWeather());
+        tvIcon.setText(icon);
     }
 
-    private float convertFahrenheitToCelcius(float fahrenheit) {
-        return fahrenheit - 273.15f;
-    }
+
 
     protected void createLocationRequest() {
         mLocationRequest = new LocationRequest();
@@ -323,7 +359,7 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
                 String cityName = addresses.get(0).getLocality();
                 String stateName = addresses.get(0).getAdminArea();
                 String countryName = addresses.get(0).getCountryName();
-                tvCity.setText(cityName);
+
                 if (GlobalElements.isConnectingToInternet(this)) {
                     getCityWiseData(cityName);
                 } else {
@@ -393,4 +429,6 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
     public void onLocationChanged(Location location) {
 
     }
+
+
 }
