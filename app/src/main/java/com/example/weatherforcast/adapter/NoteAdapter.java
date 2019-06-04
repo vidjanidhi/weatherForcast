@@ -79,15 +79,18 @@ public class NoteAdapter extends RecyclerView.Adapter<NoteAdapter.MyViewHolder> 
 //        holder.tvPressure.setText("Pressure : " + gsCategory.getPressure());
 //        holder.tvHumidity.setText("Humidity : " + gsCategory.getHumidity());
 //        holder.tvSpeed.setText("Speed : " + gsCategory.getSpeed());
-        holder.tvDeg.setText(String.format("%.2f", support.convertFahrenheitToCelcius(
-                Float.parseFloat(gsCategory.getDeg()))) + "" + " ℃");
-        holder.tvDeg.setVisibility(View.GONE);
+        holder.tvDeg.setText(support.getFormattedDate(gsCategory.getDate()));
+        /*holder.tvDeg.setText(String.format("%.2f", support.convertFahrenheitToCelcius(
+                Float.parseFloat(gsCategory.getDeg()))) + "" + " ℃");*/
 //        holder.tvClouds.setText("Clouds : " + gsCategory.getClouds());
         holder.tvTemp.setText("day : " + gsCategory.getTemp().getDay() + " min : " + gsCategory.getTemp().getMin() + " max : " +
                 gsCategory.getTemp().getMax() + " night : " + gsCategory.getTemp().getNight() + " eve : " + gsCategory.getTemp().getEve()
                 + " morn : " + gsCategory.getTemp().getMorn());
         holder.tvTemp.setVisibility(View.GONE);
         holder.tvWeather.setText(gsCategory.getWeather().getDesc());
+        holder.tvWeather.setTypeface(
+                GlobalElements.getInstance().getAugustSansRegular()
+        );
         holder.itemIcon.setTypeface(GlobalElements.getInstance().getWeather());
 
         final String dateMsString = gsCategory.getDate() + "000";
@@ -97,7 +100,7 @@ public class NoteAdapter extends RecyclerView.Adapter<NoteAdapter.MyViewHolder> 
                 calendar.get(Calendar.HOUR_OF_DAY),
                 mContext) + "");
         holder.itemTemperature.setText(String.format("%.2f", support.convertFahrenheitToCelcius(
-                Float.parseFloat(gsCategory.getDeg()))) + "" + " ℃");
+                Float.parseFloat(gsCategory.getTemp().getDay()))) + "" + " ℃");
 
     }
 

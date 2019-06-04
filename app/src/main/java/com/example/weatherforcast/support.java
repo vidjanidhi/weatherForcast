@@ -15,6 +15,9 @@ public class support {
     public static String convertDate(String dateInMilliseconds) {
         return DateFormat.format(DATE_FORMATE, Long.parseLong(dateInMilliseconds) * 1000).toString();
     }
+    public static String getFormattedDate(String dateInMilliseconds){
+        return DateFormat.format("dd-MMM", Long.parseLong(dateInMilliseconds) * 1000).toString();
+    }
 
     public static String getTodayDate() {
         Date c = Calendar.getInstance().getTime();

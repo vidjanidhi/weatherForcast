@@ -26,6 +26,8 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:ellipsize="end"
+                android:textSize="20sp"
+                android:textStyle="bold"
                 android:text="date" />
 
             <!-- <TextView
@@ -68,6 +70,7 @@
                 android:id="@+id/tv_weather"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:textStyle="italic"
                 android:text="weather" />
         </LinearLayout>
 
